@@ -1,13 +1,16 @@
-
 /*
  This is an example of how simple driving a Neopixel can be
  This code is optimized for understandability and changability rather than raw speed
  More info at http://wp.josh.com/2014/05/11/ws2812-neopixels-made-easy/
+ 
+ Changes by Stephen Genusa:
+   1) Customizations for my 16' 723 pixel chain made
+   2) Added some extra routines
 */
 
 // Change this to be at least as long as your pixel string (too long will work fine, just be a little slower)
 
-#define PIXELS 96*11  // Number of pixels in the string
+#define PIXELS 723  // Number of pixels in the string
 
 // These values depend on which pin your string is connected to and what board you are using 
 // More info on how to find these at http://www.arduino.cc/en/Reference/PortManipulation
@@ -52,48 +55,48 @@
 
 inline void sendBit( bool bitVal ) {
   
-    if (  bitVal ) {				// 0 bit
+    if (  bitVal ) {        // 0 bit
       
-		asm volatile (
-			"sbi %[port], %[bit] \n\t"				// Set the output bit
-			".rept %[onCycles] \n\t"                                // Execute NOPs to delay exactly the specified number of cycles
-			"nop \n\t"
-			".endr \n\t"
-			"cbi %[port], %[bit] \n\t"                              // Clear the output bit
-			".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
-			"nop \n\t"
-			".endr \n\t"
-			::
-			[port]		"I" (_SFR_IO_ADDR(PIXEL_PORT)),
-			[bit]		"I" (PIXEL_BIT),
-			[onCycles]	"I" (NS_TO_CYCLES(T1H) - 2),		// 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
-			[offCycles] 	"I" (NS_TO_CYCLES(T1L) - 2)			// Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
+    asm volatile (
+      "sbi %[port], %[bit] \n\t"        // Set the output bit
+      ".rept %[onCycles] \n\t"                                // Execute NOPs to delay exactly the specified number of cycles
+      "nop \n\t"
+      ".endr \n\t"
+      "cbi %[port], %[bit] \n\t"                              // Clear the output bit
+      ".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
+      "nop \n\t"
+      ".endr \n\t"
+      ::
+      [port]    "I" (_SFR_IO_ADDR(PIXEL_PORT)),
+      [bit]   "I" (PIXEL_BIT),
+      [onCycles]  "I" (NS_TO_CYCLES(T1H) - 2),    // 1-bit width less overhead  for the actual bit setting, note that this delay could be longer and everything would still work
+      [offCycles]   "I" (NS_TO_CYCLES(T1L) - 2)     // Minimum interbit delay. Note that we probably don't need this at all since the loop overhead will be enough, but here for correctness
 
-		);
+    );
                                   
-    } else {					// 1 bit
+    } else {          // 1 bit
 
-		// **************************************************************************
-		// This line is really the only tight goldilocks timing in the whole program!
-		// **************************************************************************
+    // **************************************************************************
+    // This line is really the only tight goldilocks timing in the whole program!
+    // **************************************************************************
 
 
-		asm volatile (
-			"sbi %[port], %[bit] \n\t"				// Set the output bit
-			".rept %[onCycles] \n\t"				// Now timing actually matters. The 0-bit must be long enough to be detected but not too long or it will be a 1-bit
-			"nop \n\t"                                              // Execute NOPs to delay exactly the specified number of cycles
-			".endr \n\t"
-			"cbi %[port], %[bit] \n\t"                              // Clear the output bit
-			".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
-			"nop \n\t"
-			".endr \n\t"
-			::
-			[port]		"I" (_SFR_IO_ADDR(PIXEL_PORT)),
-			[bit]		"I" (PIXEL_BIT),
-			[onCycles]	"I" (NS_TO_CYCLES(T0H) - 2),
-			[offCycles]	"I" (NS_TO_CYCLES(T0L) - 2)
+    asm volatile (
+      "sbi %[port], %[bit] \n\t"        // Set the output bit
+      ".rept %[onCycles] \n\t"        // Now timing actually matters. The 0-bit must be long enough to be detected but not too long or it will be a 1-bit
+      "nop \n\t"                                              // Execute NOPs to delay exactly the specified number of cycles
+      ".endr \n\t"
+      "cbi %[port], %[bit] \n\t"                              // Clear the output bit
+      ".rept %[offCycles] \n\t"                               // Execute NOPs to delay exactly the specified number of cycles
+      "nop \n\t"
+      ".endr \n\t"
+      ::
+      [port]    "I" (_SFR_IO_ADDR(PIXEL_PORT)),
+      [bit]   "I" (PIXEL_BIT),
+      [onCycles]  "I" (NS_TO_CYCLES(T0H) - 2),
+      [offCycles] "I" (NS_TO_CYCLES(T0L) - 2)
 
-		);
+    );
       
     }
     
@@ -117,7 +120,6 @@ inline void sendByte( unsigned char byte ) {
 } 
 
 /*
-
   The following three functions are the public API:
   
   ledSetup() - set up the pin that is connected to the string. Call once at the begining of the program.  
@@ -147,12 +149,11 @@ inline void sendPixel( unsigned char r, unsigned char g , unsigned char b )  {
 // Just wait long enough without sending any bots to cause the pixels to latch and display the last sent frame
 
 void show() {
-	_delay_us( (RES / 1000UL) + 1);				// Round up since the delay must be _at_least_ this long (too short might not work, too long not a problem)
+  _delay_us( (RES / 1000UL) + 1);       // Round up since the delay must be _at_least_ this long (too short might not work, too long not a problem)
 }
 
 
 /*
-
   That is the whole API. What follows are some demo functions rewriten from the AdaFruit strandtest code...
   
   https://github.com/adafruit/Adafruit_NeoPixel/blob/master/examples/strandtest/strandtest.ino
@@ -169,201 +170,239 @@ void show() {
 
 
 // Display a single color on the whole string
-
 void showColor( unsigned char r , unsigned char g , unsigned char b ) {
-  
   cli();  
   for( int p=0; p<PIXELS; p++ ) {
     sendPixel( r , g , b );
   }
   sei();
   show();
-  
 }
+
+// Display a single color on the whole string and then wait
+void showColorAndHold (unsigned char r , unsigned char g , unsigned char b , unsigned int wait){
+  showColor( r , g , b );
+  delay(wait);
+}
+
 
 // Fill the dots one after the other with a color
 // rewrite to lift the compare out of the loop
 void colorWipe(unsigned char r , unsigned char g, unsigned char b, unsigned  char wait ) {
   for(unsigned int i=0; i<PIXELS; i+= (PIXELS/60) ) {
-    
     cli();
     unsigned int p=0;
-    
+    // Send pixels that are wipe color
     while (p++<=i) {
         sendPixel(r,g,b);
     } 
-     
+    // Black out remaining pixels 
     while (p++<=PIXELS) {
         sendPixel(0,0,0);  
-      
     }
-    
     sei();
     show();
     delay(wait);
   }
 }
 
+// Wipe from start color to end color rather than black/off
+void colorWipeFromColor(unsigned char r1 , unsigned char g1, unsigned char b1, unsigned char r2 , unsigned char g2, unsigned char b2, unsigned  char wait) {
+  for(unsigned int i=0; i<PIXELS; i+= (PIXELS/60) ) {
+    cli();
+    unsigned int p=0;
+    // Send pixels that are wipe color
+    while (p++<=i) {
+        sendPixel(r2,g2,b2);  
+    } 
+    // Set rest to RGB1 
+    while (p++<=PIXELS) {
+        sendPixel(r1,g1,b1);
+    }
+    sei();
+    show();
+    delay(wait);
+  }
+}
+
+// Color wipe in reverse from black
+void colorWipeReverse(unsigned char r , unsigned char g, unsigned char b, unsigned  char wait ) {
+  for(unsigned int i=0; i<PIXELS; i+=(PIXELS/60) ) {
+    cli();
+    unsigned int p=0;
+     // Black out first pixels 
+     while (p++<=PIXELS-i) {
+        sendPixel(0,0,0);  
+     } 
+    //Send pixels that are wipe color
+    p=0;
+    while (p++<=i) {
+        sendPixel(r,g,b);
+    }
+    sei();
+    show();
+    delay(wait);
+  }
+}
+
+// Color wipe in reverse from RGB1 to RGB2
+void colorWipeReverseFromToColor(unsigned char r1 , unsigned char g1, unsigned char b1, unsigned char r2 , unsigned char g2, unsigned char b2, unsigned  char wait ) {
+  for(unsigned int i=0; i<PIXELS; i+=(PIXELS/60) ) {
+    cli();
+    unsigned int p=0;
+    // set rgb1 pixels
+    while (p++<=PIXELS-i) {
+        sendPixel(r1,g1,b1);
+    } 
+    // set rgb2 pixels
+    p=0;
+    while (p++<=i) {
+        sendPixel(r2,g2,b2);  
+    }
+    sei();
+    show();
+    delay(wait);
+  }
+}
+
+// ColorWipe from middle of chain. Works but... algorithm needs to be fixed.
+void colorWipeFromMiddle(unsigned char r , unsigned char g, unsigned char b, unsigned  char wait ) {
+  for(unsigned int i=0; i<=PIXELS; i+=(PIXELS/60) ) {
+    cli();
+    unsigned int p=0;
+    // Black out remaining pixels 
+    while (p++<=PIXELS-i) {
+        sendPixel(0,0,0);  
+    } 
+    //Send pixels that are wipe color
+    while (p++<=i) {
+        sendPixel(r,g,b);
+    }
+    sei();
+    show();
+    delay(wait);
+  }
+}
+
+
 // Theatre-style crawling lights.
 // Changes spacing to be dynmaic based on string size
-
-#define THEATER_SPACING (PIXELS/20)
+#define THEATER_SPACING (PIXELS/150)
 
 void theaterChase( unsigned char r , unsigned char g, unsigned char b, unsigned char wait ) {
-  
-  for (int j=0; j< 3 ; j++) {  
-  
+  for (int j=0; j< 100 ; j++) {  
     for (int q=0; q < THEATER_SPACING ; q++) {
-      
       unsigned int step=0;
-      
       cli();
-      
       for (int i=0; i < PIXELS ; i++) {
-        
         if (step==q) {
-          
           sendPixel( r , g , b );
-          
         } else {
-          
           sendPixel( 0 , 0 , 0 );
-          
         }
-        
         step++;
-        
         if (step==THEATER_SPACING) step =0;
-        
       }
-      
       sei();
-      
       show();
       delay(wait);
-      
     }
-    
   }
-  
 }
-        
 
 
-// I rewrite this one from scrtach to use high resolution for the color wheel to look nicer on a *much* bigger string
-                                                                            
-void rainbowCycle(unsigned char frames , unsigned int frameAdvance, unsigned int pixelAdvance ) {
-  
+// I rewrote this one from scratch to use high resolution for the color wheel to look nicer on a *much* bigger string
+void rainbowCycle(unsigned long frames , unsigned int frameAdvance, unsigned int pixelAdvance ) {
   // Hue is a number between 0 and 3*256 than defines a mix of r->g->b where
   // hue of 0 = Full red
   // hue of 128 = 1/2 red and 1/2 green
   // hue of 256 = Full Green
   // hue of 384 = 1/2 green and 1/2 blue
-  // ...
   
   unsigned int firstPixelHue = 0;     // Color for the first pixel in the string
-  
-  for(unsigned int j=0; j<frames; j++) {                                  
-    
+  for(unsigned long j=0; j<frames; j++) {                                  
     unsigned int currentPixelHue = firstPixelHue;
-       
     cli();    
-        
     for(unsigned int i=0; i< PIXELS; i++) {
-      
       if (currentPixelHue>=(3*256)) {                  // Normalize back down incase we incremented and overflowed
         currentPixelHue -= (3*256);
-      }
-            
-      unsigned char phase = currentPixelHue >> 8;
-      unsigned char step = currentPixelHue & 0xff;
-                 
-      switch (phase) {
-        
+     }
+     unsigned char phase = currentPixelHue >> 8;
+     unsigned char step = currentPixelHue & 0xff;
+     switch (phase) {
         case 0: 
           sendPixel( ~step , step ,  0 );
           break;
-          
         case 1: 
           sendPixel( 0 , ~step , step );
           break;
-
         case 2: 
           sendPixel(  step ,0 , ~step );
           break;
-          
       }
-      
       currentPixelHue+=pixelAdvance;                                      
-      
-                          
     } 
-    
     sei();
-    
     show();
-    
     firstPixelHue += frameAdvance;
-           
   }
 }
 
   
 // I added this one just to demonstrate how quickly you can flash the string.
 // Flashes get faster and faster until *boom* and fade to black.
-
 void detonate( unsigned char r , unsigned char g , unsigned char b , unsigned int startdelayms) {
   while (startdelayms) {
-    
     showColor( r , g , b );      // Flash the color 
     showColor( 0 , 0 , 0 );
-    
     delay( startdelayms );      
-    
     startdelayms =  ( startdelayms * 4 ) / 5 ;           // delay between flashes is halved each time until zero
-    
   }
-  
   // Then we fade to black....
-  
-  for( int fade=256; fade>0; fade-- ) {
-    
+  for( int fade=175; fade>0; fade-- ) {
     showColor( (r * fade) / 256 ,(g*fade) /256 , (b*fade)/256 );
-        
   }
-  
   showColor( 0 , 0 , 0 );
-  
-    
 }
 
 void setup() {
-    
   ledsetup();  
-  
 }
 
 
 void loop() {
 
-  // Some example procedures showing how to display to the pixels:
+  showColorAndHold( 0x19, 0x19, 0x70, 1500 );
+
   colorWipe(255, 0, 0, 0); // Red
-  colorWipe(0, 255, 0, 0); // Green
-  colorWipe(0, 0, 255, 0); // Blue
-  
-  // Send a theater pixel chase in...
+  colorWipeReverseFromToColor(255, 0, 0,  0, 0, 127, 0); // Red to Blue
+  colorWipeFromColor(0, 0, 127, 127, 127, 127, 0); //Blue to White
+  colorWipeReverseFromToColor(127, 127, 127, 0xFF, 0xA5, 0, 0); //White to Orange
+  colorWipeFromColor(0xFF, 0xA5, 0, 0x80, 0, 0x80, 0); // Orange to Purple
+
+  colorWipeFromMiddle(127, 0, 0, 0);
+  colorWipeFromMiddle(0, 127, 0, 25);
+  colorWipeFromMiddle(0, 0, 127, 50);
+  colorWipeFromMiddle(0, 127, 0, 25);
+  colorWipeFromMiddle(127, 0, 0, 0);
+  colorWipeFromMiddle(0, 0, 127, 0);
+  colorWipeFromMiddle(0, 127, 0, 0);
+  colorWipeFromMiddle(127, 0, 0, 0);
+
+  showColorAndHold( 127, 0, 0, 2000 );
+  showColorAndHold( 0x00, 0x8B, 0x8B, 1500 );
+
+  showColor(0, 0, 0);
+  colorWipeReverseFromToColor(0, 0, 0,  0, 0, 127, 0);
+  colorWipe(0, 0, 127, 0); // Blue
+ 
   theaterChase(127, 127, 127, 0); // White
-  theaterChase(127,   0,   0, 0); // Red
-  theaterChase(  0,   0, 127, 0); // Blue
+  theaterChase(127, 0, 0, 0); // Red
   
-  rainbowCycle(1000 , 20 , 5 );
-  detonate( 255 , 255 , 255 , 1000);
+  rainbowCycle(1000, 5, 5);
+
+  // Cover for 5 volt problem on long string
+  detonate(175, 175, 175, 500);
   
   return;
-  
 }
-
-
-
-
-
